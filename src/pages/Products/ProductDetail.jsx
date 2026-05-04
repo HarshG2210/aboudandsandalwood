@@ -1,53 +1,56 @@
-import React, { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
 import {
+  Badge,
   Box,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
   Button,
+  Divider,
   Flex,
   Grid,
   HStack,
   Image,
-  Text,
-  VStack,
-  Badge,
-  SimpleGrid,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
-  Divider,
-  Select,
+  NumberDecrementStepper,
+  NumberIncrementStepper,
   NumberInput,
   NumberInputField,
   NumberInputStepper,
-  NumberIncrementStepper,
-  NumberDecrementStepper,
-  useToast,
+  Select,
+  SimpleGrid,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
+  Text,
+  VStack,
   useColorModeValue,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
+  useToast,
 } from "@chakra-ui/react";
 import {
-  FiStar,
-  FiHeart,
-  FiShoppingBag,
   FiArrowLeft,
   FiCheck,
   FiGlobe,
+  FiHeart,
   FiPackage,
+  FiShoppingBag,
+  FiStar,
 } from "react-icons/fi";
-import { motion } from "framer-motion";
-import { addToCart } from "../store/slices/cartSlice";
-import { toggleWishlist } from "../store/slices/wishlistSlice";
+import { Link, useParams } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import {
-  selectProductById,
+  fetchProducts,
   selectAllProducts,
-} from "../store/slices/productsSlice";
-import { useCurrency } from "../hooks/useCurrency";
-import ProductCard from "../components/ui/ProductCard";
+  selectProductById,
+} from "../../store/slices/productsSlice";
+import { useDispatch, useSelector } from "react-redux";
+
+import ProductCard from "../../components/ui/ProductCard";
+import { addToCart } from "../../store/slices/cartSlice";
+import { motion } from "framer-motion";
+import { toggleWishlist } from "../../store/slices/wishlistSlice";
+import { useCurrency } from "../../hooks/useCurrency";
+
 const MotionBox = motion(Box);
 export default function ProductDetail() {
   const { id } = useParams();
@@ -64,6 +67,11 @@ export default function ProductDetail() {
   );
   const [quantity, setQuantity] = useState(1);
   const isWishlisted = wishlist.some((i) => i.id === product?.id);
+
+  useEffect(() => {
+    dispatch(fetchProducts());
+  }, [dispatch]);
+
   const related =
     product?.relatedIds
       ?.map((rid) => allProducts.find((p) => p.id === rid))

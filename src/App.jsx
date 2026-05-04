@@ -7,9 +7,9 @@ import Footer from "./components/layout/Footer";
 import Navbar from "./components/layout/Navbar";
 
 // USER PAGES
-const Home = lazy(() => import("./pages/Home"));
-const ProductListing = lazy(() => import("./pages/ProductListing"));
-const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const Home = lazy(() => import("./pages/Home/Home"));
+const ProductListing = lazy(() => import("./pages/Products/ProductListing"));
+const ProductDetail = lazy(() => import("./pages/Products/ProductDetail"));
 const SpiritualExperience = lazy(() => import("./pages/SpiritualExperience"));
 const GlobalStore = lazy(() => import("./pages/GlobalStore"));
 const AboutUs = lazy(() => import("./pages/AboutUs"));

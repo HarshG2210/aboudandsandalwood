@@ -1,22 +1,24 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
 import {
+  Badge,
   Box,
+  Button,
+  HStack,
+  IconButton,
   Image,
   Text,
   VStack,
-  HStack,
-  Badge,
-  IconButton,
-  Button,
   useToast,
 } from "@chakra-ui/react";
 import { FiHeart, FiShoppingBag, FiStar } from "react-icons/fi";
-import { motion } from "framer-motion";
+import { useDispatch, useSelector } from "react-redux";
+
+import { Link } from "react-router-dom";
+import React from "react";
 import { addToCart } from "../../store/slices/cartSlice";
+import { motion } from "framer-motion";
 import { toggleWishlist } from "../../store/slices/wishlistSlice";
 import { useCurrency } from "../../hooks/useCurrency";
+
 const MotionBox = motion(Box);
 const badgeColors = {
   Bestseller: { bg: "brand.400", color: "white" },

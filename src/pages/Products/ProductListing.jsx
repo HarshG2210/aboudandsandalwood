@@ -1,38 +1,43 @@
-import React, { useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
 import {
+  Badge,
   Box,
-  SimpleGrid,
-  Text,
-  HStack,
   Button,
-  Select,
+  Checkbox,
+  CheckboxGroup,
+  Divider,
+  Drawer,
+  DrawerBody,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerHeader,
+  DrawerOverlay,
+  Flex,
+  HStack,
+  IconButton,
   Input,
   InputGroup,
   InputLeftElement,
-  VStack,
-  Flex,
-  Badge,
-  Divider,
-  Checkbox,
-  CheckboxGroup,
+  Select,
+  SimpleGrid,
   Stack,
+  Text,
+  VStack,
   useColorModeValue,
-  Drawer,
-  DrawerBody,
-  DrawerHeader,
-  DrawerOverlay,
-  DrawerContent,
-  DrawerCloseButton,
   useDisclosure,
-  IconButton,
 } from "@chakra-ui/react";
-import { FiSearch, FiFilter, FiX } from "react-icons/fi";
+import { FiFilter, FiSearch, FiX } from "react-icons/fi";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  fetchProducts,
+  selectAllProducts,
+} from "../../store/slices/productsSlice";
+import { selectSortBy, setSortBy } from "../../store/slices/uiSlice";
+import { useDispatch, useSelector } from "react-redux";
+
+import ProductCard from "../../components/ui/ProductCard";
 import { motion } from "framer-motion";
-import ProductCard from "../components/ui/ProductCard";
-import { selectAllProducts } from "../store/slices/productsSlice";
-import { selectSortBy, setSortBy } from "../store/slices/uiSlice";
+import { useSearchParams } from "react-router-dom";
+
 const MotionBox = motion(Box);
 const CATEGORIES = ["all", "agarwood", "sandalwood"];
 const TYPES = ["bracelet", "mala", "oil", "chips", "powder"];
@@ -45,6 +50,10 @@ export default function ProductListing() {
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState(searchParams.get("cat") || "all");
   const [activeTypes, setActiveTypes] = useState([]);
+
+  useEffect(() => {
+    dispatch(fetchProducts());
+  }, [dispatch]);
   const filtered = useMemo(() => {
     let list = allProducts;
     if (activeCat !== "all")
@@ -212,7 +221,7 @@ export default function ProductListing() {
               _focus={{ borderColor: "brand.400", boxShadow: "none" }}
             />
           </InputGroup>
-                    <Select
+          <Select
             maxW="200px"
             size="md"
             fontFamily="'Jost', sans-serif"
