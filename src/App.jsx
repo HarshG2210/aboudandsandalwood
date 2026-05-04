@@ -1,9 +1,7 @@
 import { Box, Center, Spinner } from "@chakra-ui/react";
-import React, { Suspense, lazy } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
+import { Suspense, lazy } from "react";
 
-import AdminLayout from "./admin/layout/AdminLayout";
-import AdminRoute from "./admin/routes/AdminRoute";
 import CartDrawer from "./components/ui/CartDrawer";
 import Footer from "./components/layout/Footer";
 import Navbar from "./components/layout/Navbar";
@@ -27,19 +25,6 @@ const ForgotPassword = lazy(() => import("./pages/Auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/Auth/ResetPassword"));
 const AddressPage = lazy(() => import("./pages/Auth/AddressPage"));
 
-// ADMIN
-const AdminDashboard = lazy(() => import("./admin/pages/AdminDashboard"));
-const AdminLogin = lazy(() => import("./admin/pages/AdminLogin"));
-const AdminHome = lazy(() => import("./admin/pages/AdminHome"));
-const AdminProducts = lazy(() =>
-  import("./admin/pages/products/AdminProducts")
-);
-const AdminOrders = lazy(() => import("./admin/pages/AdminOrders"));
-const AdminUsers = lazy(() => import("./admin/pages/AdminUsers"));
-const AdminProductDetail = lazy(() =>
-  import("./admin/pages//products/AdminProductDetail")
-);
-
 const Loader = () => (
   <Center h="60vh">
     <Spinner size="xl" color="brand.400" thickness="3px" />
@@ -47,19 +32,10 @@ const Loader = () => (
 );
 
 export default function App() {
-  const location = useLocation();
-
-  const isAdminRoute = location.pathname.startsWith("/admin");
-
   return (
     <Box minH="100vh" bg="ivory">
-      {/* ✅ USER LAYOUT ONLY */}
-      {!isAdminRoute && (
-        <>
-          <Navbar />
-          <CartDrawer />
-        </>
-      )}
+      <Navbar />
+      <CartDrawer />
 
       <Suspense fallback={<Loader />}>
         <Routes>
@@ -81,33 +57,10 @@ export default function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/checkout" element={<CartCheckout />} />
           <Route path="/profile" element={<UserProfile />} />
-
-          {/* ================= ADMIN ROUTES ================= */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
-
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminLayout />
-              </AdminRoute>
-            }
-          >
-            <Route element={<AdminDashboard />}>
-              <Route index element={<AdminHome />} />
-              <Route path="dashboard" element={<AdminHome />} />
-              <Route path="products" element={<AdminProducts />} />
-              <Route path="products/:id" element={<AdminProductDetail />} />
-              <Route path="orders" element={<AdminOrders />} />
-              <Route path="users" element={<AdminUsers />} />
-            </Route>
-          </Route>
         </Routes>
       </Suspense>
 
-      {/* ✅ USER FOOTER ONLY */}
-      {!isAdminRoute && <Footer />}
+      <Footer />
     </Box>
   );
 }
