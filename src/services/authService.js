@@ -77,7 +77,7 @@ export async function request(endpoint, options = {}) {
     if (res.status === 401) {
       if (!getRefresh()) {
         clearTokens();
-        window.location.href = "/login";
+        window.location.href = "/";
         return Promise.reject(data);
       }
 
