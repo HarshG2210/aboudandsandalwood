@@ -77,7 +77,11 @@ export async function request(endpoint, options = {}) {
     if (res.status === 401) {
       if (!getRefresh()) {
         clearTokens();
-        window.location.href = "/";
+
+        if (window.location.pathname !== "/login") {
+          window.location.replace("/login");
+        }
+
         return Promise.reject(data);
       }
 
@@ -99,37 +103,44 @@ export async function request(endpoint, options = {}) {
         });
       }
 
-      // Start refresh process
       isRefreshing = true;
 
       try {
         const refreshRes = await fetch(`${BASE_URL}/auth/refresh/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh: getRefresh() }),
+          body: JSON.stringify({
+            refresh: getRefresh(),
+          }),
         });
 
         const refreshData = await refreshRes.json();
 
         if (!refreshRes.ok) throw refreshData;
 
-        // Save rotated tokens
         setTokens(refreshData.access, refreshData.refresh || getRefresh());
 
-        // Process queued requests with the new access token
         processQueue(null, refreshData.access);
+
         isRefreshing = false;
 
-        // Retry original request with new token
+        // Retry original request
         const retryRes = await makeRequest(refreshData.access);
+
         const retryData = await retryRes.json().catch(() => ({}));
 
         return retryData;
       } catch (refreshError) {
         processQueue(refreshError);
+
         isRefreshing = false;
+
         clearTokens();
-        window.location.href = "/login";
+
+        if (window.location.pathname !== "/login") {
+          window.location.replace("/login");
+        }
+
         return Promise.reject(refreshError);
       }
     }
@@ -145,7 +156,9 @@ export async function request(endpoint, options = {}) {
           : data[key] || message;
       }
 
-      toast.error(message);
+      if (window.location.pathname !== "/login") {
+        toast.error(message);
+      }
       return Promise.reject(data);
     }
 

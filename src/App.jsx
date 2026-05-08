@@ -40,12 +40,17 @@ const Loader = () => (
 
 export default function App() {
   const dispatch = useDispatch();
+  const token = localStorage.getItem("access_token");
   useEffect(() => {
+    // ONLY CALL AUTH APIS IF USER IS LOGGED IN
     dispatch(fetchProducts());
-    dispatch(fetchCart());
-    dispatch(fetchProfile());
-    dispatch(fetchAddresses());
-    dispatch(fetchOrders());
+
+    if (token) {
+      dispatch(fetchCart());
+      dispatch(fetchProfile());
+      dispatch(fetchAddresses());
+      dispatch(fetchOrders());
+    }
   }, [dispatch]);
   return (
     <Box minH="100vh" bg="ivory">
