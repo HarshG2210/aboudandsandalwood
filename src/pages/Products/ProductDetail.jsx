@@ -6,7 +6,6 @@ import {
   BreadcrumbLink,
   Button,
   Divider,
-  Flex,
   Grid,
   HStack,
   Image,
@@ -15,7 +14,6 @@ import {
   NumberInput,
   NumberInputField,
   NumberInputStepper,
-  Select,
   SimpleGrid,
   Tab,
   TabList,
@@ -28,7 +26,6 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import {
-  FiArrowLeft,
   FiCheck,
   FiGlobe,
   FiHeart,
@@ -57,14 +54,15 @@ export default function ProductDetail() {
   const dispatch = useDispatch();
   const toast = useToast();
   const product = useSelector(selectProductById(id));
+
   const allProducts = useSelector(selectAllProducts);
+
   const wishlist = useSelector((s) => s.wishlist.items);
   const { format, currency } = useCurrency();
   const bg = useColorModeValue("ivory", "gray.900");
   const [selectedImage, setSelectedImage] = useState(0);
-  const [selectedVariant, setSelectedVariant] = useState(
-    product?.variants?.[0] || null
-  );
+  const [selectedVariant, setSelectedVariant] = useState(null);
+
   const [quantity, setQuantity] = useState(1);
   const isWishlisted = wishlist.some((i) => i.id === product?.id);
 
@@ -72,10 +70,17 @@ export default function ProductDetail() {
     dispatch(fetchProducts());
   }, [dispatch]);
 
-  const related =
-    product?.relatedIds
-      ?.map((rid) => allProducts.find((p) => p.id === rid))
-      .filter(Boolean) || [];
+  useEffect(() => {
+    if (product?.variants?.length > 0) {
+      setSelectedVariant(product.variants[0]);
+    }
+  }, [product]);
+
+  // ================= RELATED PRODUCTS LOGIC =================
+  const related = allProducts
+    .filter((p) => p.id !== product.id && p.type === product.type)
+    .slice(0, 6);
+
   if (!product) {
     return (
       <Box pt={32} textAlign="center" minH="60vh">
@@ -92,28 +97,29 @@ export default function ProductDetail() {
       </Box>
     );
   }
-  const handleAddToCart = () => {
-    dispatch(
-      addToCart({
-        id: product.id,
-        name: product.name,
-        prices: product.prices,
-        price: product.prices.INR,
-        image: product.images[0],
-        variant: selectedVariant,
-        category: product.category,
-        quantity,
-      })
-    );
-    toast({
-      title: "Added to bag",
-      description: `${product.name}${
-        selectedVariant ? ` · ${selectedVariant}` : ""
-      }`,
-      status: "success",
-      duration: 2500,
-      position: "bottom-right",
-    });
+
+  const handleAddToCart = async () => {
+    if (!selectedVariant) return;
+
+    try {
+      await dispatch(
+        addToCart({
+          productId: product.id,
+          variantId: selectedVariant.id,
+          quantity,
+        })
+      ).unwrap();
+
+      toast({
+        title: "Added to cart",
+        status: "success",
+      });
+    } catch (err) {
+      toast({
+        title: "Failed",
+        status: "error",
+      });
+    }
   };
   return (
     <Box bg={bg} pt={24} minH="100vh">
@@ -278,7 +284,9 @@ export default function ProductDetail() {
               fontWeight="400"
               color="brand.500"
             >
-              {format(product.prices)}
+              {selectedVariant
+                ? format({ INR: Number(selectedVariant.price) * quantity })
+                : format(product.prices)}
             </Text>
             <Text
               fontFamily="'Jost', sans-serif"
@@ -305,12 +313,14 @@ export default function ProductDetail() {
                 <HStack spacing={3} flexWrap="wrap">
                   {product.variants.map((v) => (
                     <Button
-                      key={v}
+                      key={v.id}
                       size="sm"
-                      variant={selectedVariant === v ? "gold" : "outline_gold"}
+                      variant={
+                        selectedVariant?.id === v.id ? "gold" : "outline_gold"
+                      }
                       onClick={() => setSelectedVariant(v)}
                     >
-                      {v}
+                      {v.label}
                     </Button>
                   ))}
                 </HStack>
@@ -320,9 +330,13 @@ export default function ProductDetail() {
             <HStack spacing={4} w="full" flexWrap="wrap">
               <NumberInput
                 min={1}
-                max={product.stock}
+                max={selectedVariant?.stock || 1}
                 value={quantity}
-                onChange={(val) => setQuantity(Number(val))}
+                onChange={(val) =>
+                  setQuantity(
+                    Math.min(Number(val), selectedVariant?.stock || 1)
+                  )
+                }
                 maxW="120px"
               >
                 <NumberInputField
@@ -341,7 +355,7 @@ export default function ProductDetail() {
                 flex={1}
                 leftIcon={<FiShoppingBag />}
                 onClick={handleAddToCart}
-                isDisabled={product.stock === 0}
+                isDisabled={!selectedVariant || selectedVariant.stock === 0}
               >
                 {product.stock === 0 ? "Out of Stock" : "Add to Bag"}
               </Button>
@@ -366,13 +380,15 @@ export default function ProductDetail() {
             <Text
               fontFamily="'Jost', sans-serif"
               fontSize="xs"
-              color={product.stock < 10 ? "red.400" : "green.500"}
+              color={selectedVariant?.stock < 10 ? "red.400" : "green.500"}
             >
-              {product.stock < 10
-                ? `Only ${product.stock} left in stock`
-                : `In stock · ${product.stock} available`}
+              {selectedVariant?.stock < 10
+                ? `Only ${selectedVariant?.stock} left in stock`
+                : `In stock · ${selectedVariant?.stock} available`}
             </Text>
+
             <Divider borderColor="brand.100" />
+
             {/* Quick info grid */}
             <SimpleGrid columns={2} spacing={4} w="full">
               {[

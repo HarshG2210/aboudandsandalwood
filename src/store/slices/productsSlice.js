@@ -33,15 +33,7 @@ export const fetchProducts = createAsyncThunk(
         images: p.images?.map((img) => img.image) || [],
 
         // ✅ VARIANT FIX
-        variants: p.variants?.map((v) => v.label) || [],
-
-        // ✅ PRICE FIX
-        prices: {
-          INR: Number(p.variants?.[0]?.price || 0),
-        },
-
-        // ✅ STOCK FIX
-        stock: p.variants?.reduce((acc, v) => acc + (v.stock || 0), 0) || 0,
+        variants: p.variants || [],
 
         rating: p.rating || 0,
         reviews: 0,

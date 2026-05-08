@@ -1,10 +1,16 @@
 import { Box, Center, Spinner } from "@chakra-ui/react";
 import { Route, Routes } from "react-router-dom";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 
 import CartDrawer from "./components/ui/CartDrawer";
 import Footer from "./components/layout/Footer";
 import Navbar from "./components/layout/Navbar";
+import { fetchAddresses } from "./store/slices/addressSlice";
+import { fetchCart } from "./store/slices/cartSlice";
+import { fetchOrders } from "./store/slices/checkoutSlice";
+import { fetchProducts } from "./store/slices/productsSlice";
+import { fetchProfile } from "./store/slices/userSlice";
+import { useDispatch } from "react-redux";
 
 // USER PAGES
 const Home = lazy(() => import("./pages/Home/Home"));
@@ -15,7 +21,7 @@ const GlobalStore = lazy(() => import("./pages/GlobalStore"));
 const AboutUs = lazy(() => import("./pages/AboutUs"));
 const Blog = lazy(() => import("./pages/Blog"));
 const Contact = lazy(() => import("./pages/Contact"));
-const CartCheckout = lazy(() => import("./pages/CartCheckout"));
+const CartCheckout = lazy(() => import("./pages/Checkout/CartCheckout"));
 const UserProfile = lazy(() => import("./pages/Auth/UserProfile"));
 const Register = lazy(() => import("./pages/Auth/Register"));
 const VerifyOTP = lazy(() => import("./pages/Auth/VerifyOTP"));
@@ -24,6 +30,7 @@ const CompleteProfile = lazy(() => import("./pages/Auth/CompleteProfile"));
 const ForgotPassword = lazy(() => import("./pages/Auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/Auth/ResetPassword"));
 const AddressPage = lazy(() => import("./pages/Auth/AddressPage"));
+const Orders = lazy(() => import("./pages/Auth/Orders"));
 
 const Loader = () => (
   <Center h="60vh">
@@ -32,6 +39,14 @@ const Loader = () => (
 );
 
 export default function App() {
+  const dispatch = useDispatch();
+  useEffect(() => {
+    dispatch(fetchProducts());
+    dispatch(fetchCart());
+    dispatch(fetchProfile());
+    dispatch(fetchAddresses());
+    dispatch(fetchOrders());
+  }, [dispatch]);
   return (
     <Box minH="100vh" bg="ivory">
       <Navbar />
@@ -41,6 +56,7 @@ export default function App() {
         <Routes>
           {/* ================= USER ROUTES ================= */}
           <Route path="/" element={<Home />} />
+          <Route path="/profile" element={<UserProfile />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify" element={<VerifyOTP />} />
           <Route path="/login" element={<Login />} />
@@ -50,13 +66,13 @@ export default function App() {
           <Route path="/addresses" element={<AddressPage />} />
           <Route path="/products" element={<ProductListing />} />
           <Route path="/products/:id" element={<ProductDetail />} />
+          <Route path="/checkout" element={<CartCheckout />} />
           <Route path="/spiritual" element={<SpiritualExperience />} />
           <Route path="/global" element={<GlobalStore />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/checkout" element={<CartCheckout />} />
-          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/orders" element={<Orders />} />
         </Routes>
       </Suspense>
 

@@ -20,6 +20,7 @@ import { toggleWishlist } from "../../store/slices/wishlistSlice";
 import { useCurrency } from "../../hooks/useCurrency";
 
 const MotionBox = motion(Box);
+
 const badgeColors = {
   Bestseller: { bg: "brand.400", color: "white" },
   Rare: { bg: "oud.700", color: "brand.200" },
@@ -32,39 +33,64 @@ const badgeColors = {
   Value: { bg: "gray.500", color: "white" },
   Sacred: { bg: "red.500", color: "white" },
 };
+
 export default function ProductCard({ product }) {
   const dispatch = useDispatch();
   const toast = useToast();
   const { format } = useCurrency();
+
   const wishlist = useSelector((s) => s.wishlist.items);
   const isWishlisted = wishlist.some((i) => i.id === product.id);
-  const handleAddToCart = (e) => {
+
+  // ================= PRICE LOGIC =================
+  const variants = product.variants || [];
+
+  // get lowest price variant (for listing)
+  const minVariant =
+    variants.length > 0
+      ? [...variants].sort((a, b) => Number(a.price) - Number(b.price))[0]
+      : null;
+
+  const displayPrice = minVariant
+    ? format({ INR: Number(minVariant.price) })
+    : format(product.prices); // fallback (old data safety)
+
+  // ================= ADD TO CART =================
+
+  const handleAddToCart = async (e) => {
     e.preventDefault();
-    dispatch(
-      addToCart({
-        id: product.id,
-        name: product.name,
-        prices: product.prices,
-        price: product.prices.INR,
-        image: product.images[0],
-        variant: product.variants?.[0] || null,
-        category: product.category,
-      })
-    );
-    toast({
-      title: "Added to bag",
-      description: product.name,
-      status: "success",
-      duration: 2000,
-      isClosable: true,
-      position: "bottom-right",
-    });
+
+    const variant = minVariant;
+
+    if (!variant) return;
+
+    console.log("🛒 ADD FROM CARD");
+
+    try {
+      await dispatch(
+        addToCart({
+          productId: product.id,
+          variantId: variant.id,
+          quantity: 1,
+        })
+      ).unwrap();
+
+      toast({
+        title: "Added to cart",
+        status: "success",
+      });
+    } catch {
+      toast({
+        title: "Failed",
+        status: "error",
+      });
+    }
   };
   const bc = badgeColors[product.badge] || badgeColors["Value"];
+
   return (
     <MotionBox whileHover={{ y: -4 }} transition={{ duration: 0.25 }}>
       <Link to={`/products/${product.id}`}>
-        {" "}
         <Box
           bg="white"
           borderRadius="xl"
@@ -96,7 +122,8 @@ export default function ProductCard({ product }) {
               _groupHover={{ transform: "scale(1.06)" }}
               fallbackSrc="https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=600"
             />
-            {/* Overlay on hover */}
+
+            {/* Overlay */}
             <Box
               position="absolute"
               inset={0}
@@ -117,6 +144,7 @@ export default function ProductCard({ product }) {
                 Add to Bag
               </Button>
             </Box>
+
             {/* Badge */}
             {product.badge && (
               <Badge
@@ -135,6 +163,7 @@ export default function ProductCard({ product }) {
                 {product.badge}
               </Badge>
             )}
+
             {/* Wishlist */}
             <IconButton
               icon={<FiHeart fill={isWishlisted ? "currentColor" : "none"} />}
@@ -159,6 +188,7 @@ export default function ProductCard({ product }) {
               aria-label="Wishlist"
             />
           </Box>
+
           {/* Info */}
           <VStack align="start" spacing={2} p={4}>
             <HStack justify="space-between" w="full">
@@ -174,8 +204,9 @@ export default function ProductCard({ product }) {
                   ? "Agarwood · Oud"
                   : "Sandalwood"}
                 {" · "}
-                {product.type}{" "}
+                {product.type}
               </Text>
+
               <HStack spacing={1}>
                 <FiStar
                   size={10}
@@ -213,6 +244,7 @@ export default function ProductCard({ product }) {
               {product.subtitle}
             </Text>
 
+            {/* PRICE */}
             <HStack justify="space-between" w="full" pt={1}>
               <Text
                 fontFamily="'Cormorant Garamond', serif"
@@ -220,8 +252,9 @@ export default function ProductCard({ product }) {
                 fontWeight="500"
                 color="brand.500"
               >
-                {format(product.prices)}
+                {displayPrice}
               </Text>
+
               <Text
                 fontFamily="'Jost', sans-serif"
                 fontSize="9px"

@@ -1,40 +1,43 @@
-import React from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
 import {
+  Badge,
+  Box,
+  Button,
+  Divider,
   Drawer,
   DrawerBody,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerFooter,
   DrawerHeader,
   DrawerOverlay,
-  DrawerContent,
-  DrawerCloseButton,
-  DrawerFooter,
-  VStack,
   HStack,
-  Text,
-  Image,
   IconButton,
-  Button,
-  Box,
-  Divider,
-  Badge,
+  Image,
+  Text,
+  VStack,
 } from "@chakra-ui/react";
-import { FiMinus, FiPlus, FiTrash2, FiShoppingBag } from "react-icons/fi";
+import { FiMinus, FiPlus, FiShoppingBag, FiTrash2 } from "react-icons/fi";
 import {
   closeCart,
-  removeFromCart,
-  updateQuantity,
-  selectCartItems,
-  selectCartTotal,
+  removeCartItem,
+  selectCartItemsWithTotal,
   selectCartOpen,
+  selectCartTotal,
+  updateCartItem,
 } from "../../store/slices/cartSlice";
+import { useDispatch, useSelector } from "react-redux";
+
+import { Link } from "react-router-dom";
+import React from "react";
 import { useCurrency } from "../../hooks/useCurrency";
+
 export default function CartDrawer() {
   const dispatch = useDispatch();
-  const items = useSelector(selectCartItems);
+  const items = useSelector(selectCartItemsWithTotal);
   const total = useSelector(selectCartTotal);
   const isOpen = useSelector(selectCartOpen);
   const { symbol, currency } = useCurrency();
+
   return (
     <Drawer
       isOpen={isOpen}
@@ -58,148 +61,88 @@ export default function CartDrawer() {
           </HStack>
         </DrawerHeader>
         <DrawerBody py={6}>
-          {items.length === 0 ? (
-            <VStack justify="center" h="full" spacing={4} color="oud.400">
-              <FiShoppingBag size={48} />
-              <Text fontFamily="'Cormorant Garamond', serif" fontSize="xl">
-                Your bag is empty
-              </Text>
-              <Text
-                fontFamily="'Jost', sans-serif"
-                fontSize="sm"
-                textAlign="center"
-              >
-                Discover our rare agarwood and sandalwood collection
-              </Text>
-              <Button
-                variant="gold"
-                onClick={() => dispatch(closeCart())}
-                as={Link}
-                to="/products"
-                size="sm"
-              >
-                Shop Collection
-              </Button>
-            </VStack>
-          ) : (
-            <VStack spacing={6} align="stretch">
-              {items.map((item) => (
-                <Box key={`${item.id}-${item.variant}`}>
-                  <HStack align="start" spacing={4}>
-                    <Image
-                      src={
-                        item.image ||
-                        "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=200"
+          {items.map((item) => (
+            <Box key={item.id}>
+              <HStack align="start" spacing={4}>
+                <Image
+                  src={
+                    item.product_detail?.images?.[0]?.image ||
+                    "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=200"
+                  }
+                  boxSize="80px"
+                  objectFit="cover"
+                  borderRadius="md"
+                />
+
+                <VStack align="start" flex={1} spacing={1}>
+                  <Text fontSize="md" fontWeight="500">
+                    {item.product_detail?.name}
+                  </Text>
+
+                  {item.variant_detail && (
+                    <Badge bg="brand.50" color="brand.600" fontSize="9px">
+                      {item.variant_detail.label}
+                    </Badge>
+                  )}
+
+                  {/* ✅ PRICE PER ITEM */}
+                  <Text fontSize="sm" color="brand.500" fontWeight="600">
+                    {symbol}
+                    {item.itemTotal.toLocaleString()}
+                  </Text>
+
+                  {/* OPTIONAL BREAKDOWN */}
+                  <Text fontSize="xs" color="gray.500">
+                    {symbol}
+                    {Number(item.variant_detail?.price).toLocaleString()} ×{" "}
+                    {item.quantity}
+                  </Text>
+
+                  {/* QUANTITY CONTROLS */}
+                  <HStack spacing={2}>
+                    <IconButton
+                      icon={<FiMinus />}
+                      size="xs"
+                      onClick={() =>
+                        item.quantity > 1
+                          ? dispatch(
+                              updateCartItem({
+                                id: item.id,
+                                quantity: item.quantity - 1,
+                              })
+                            )
+                          : dispatch(removeCartItem(item.id))
                       }
-                      boxSize="80px"
-                      objectFit="cover"
-                      borderRadius="md"
-                      flexShrink={0}
                     />
-                    <VStack align="start" flex={1} spacing={1}>
-                      <Text
-                        fontFamily="'Cormorant Garamond', serif"
-                        fontSize="md"
-                        fontWeight="500"
-                        lineHeight="1.2"
-                      >
-                        {item.name}
-                      </Text>
-                      {item.variant && (
-                        <Badge
-                          bg="brand.50"
-                          color="brand.600"
-                          fontFamily="'Jost', sans-serif"
-                          fontSize="9px"
-                          letterSpacing="0.1em"
-                        >
-                          {item.variant}
-                        </Badge>
-                      )}{" "}
-                      <Text
-                        fontFamily="'Jost', sans-serif"
-                        fontSize="sm"
-                        color="brand.500"
-                        fontWeight="500"
-                      >
-                        {symbol}
-                        {(
-                          item.prices?.[currency] ||
-                          item.price ||
-                          0
-                        ).toLocaleString()}
-                      </Text>
-                      <HStack spacing={2} pt={1}>
-                        <IconButton
-                          icon={<FiMinus />}
-                          size="xs"
-                          variant="outline"
-                          borderColor="brand.200"
-                          onClick={() =>
-                            item.quantity > 1
-                              ? dispatch(
-                                  updateQuantity({
-                                    id: item.id,
-                                    variant: item.variant,
-                                    quantity: item.quantity - 1,
-                                  })
-                                )
-                              : dispatch(
-                                  removeFromCart({
-                                    id: item.id,
-                                    variant: item.variant,
-                                  })
-                                )
-                          }
-                          aria-label="Decrease"
-                        />
-                        <Text
-                          fontFamily="'Jost', sans-serif"
-                          fontSize="sm"
-                          minW="20px"
-                          textAlign="center"
-                        >
-                          {item.quantity}
-                        </Text>
-                        <IconButton
-                          icon={<FiPlus />}
-                          size="xs"
-                          variant="outline"
-                          borderColor="brand.200"
-                          onClick={() =>
-                            dispatch(
-                              updateQuantity({
-                                id: item.id,
-                                variant: item.variant,
-                                quantity: item.quantity + 1,
-                              })
-                            )
-                          }
-                          aria-label="Increase"
-                        />
-                        <IconButton
-                          icon={<FiTrash2 />}
-                          size="xs"
-                          variant="ghost"
-                          color="red.400"
-                          onClick={() =>
-                            dispatch(
-                              removeFromCart({
-                                id: item.id,
-                                variant: item.variant,
-                              })
-                            )
-                          }
-                          aria-label="Remove"
-                        />
-                      </HStack>
-                    </VStack>
+
+                    <Text>{item.quantity}</Text>
+
+                    <IconButton
+                      icon={<FiPlus />}
+                      size="xs"
+                      onClick={() =>
+                        dispatch(
+                          updateCartItem({
+                            id: item.id,
+                            quantity: item.quantity + 1,
+                          })
+                        )
+                      }
+                    />
+
+                    <IconButton
+                      icon={<FiTrash2 />}
+                      size="xs"
+                      color="red.400"
+                      onClick={() => dispatch(removeCartItem(item.id))}
+                    />
                   </HStack>
-                  <Divider mt={4} borderColor="brand.100" />
-                </Box>
-              ))}
-            </VStack>
-          )}
+                </VStack>
+              </HStack>
+
+              <Divider mt={4} />
+            </Box>
+          ))}
         </DrawerBody>
         {items.length > 0 && (
           <DrawerFooter

@@ -54,6 +54,7 @@ export default function ProductListing() {
   useEffect(() => {
     dispatch(fetchProducts());
   }, [dispatch]);
+  
   const filtered = useMemo(() => {
     let list = allProducts;
     if (activeCat !== "all")
