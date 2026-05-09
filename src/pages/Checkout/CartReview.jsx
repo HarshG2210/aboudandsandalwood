@@ -17,6 +17,7 @@ import {
 } from "../../store/slices/checkoutSlice";
 import { useDispatch, useSelector } from "react-redux";
 
+import { fetchCart } from "../../store/slices/cartSlice";
 import { useCurrency } from "../../hooks/useCurrency";
 
 export default function CartReview({ setStep }) {
@@ -31,7 +32,7 @@ export default function CartReview({ setStep }) {
   // fetch orders on mount
   useEffect(() => {
     dispatch(fetchOrders());
-    // dispatch(fetchCart());
+    dispatch(fetchCart());
   }, [dispatch]);
 
   // ==========================================

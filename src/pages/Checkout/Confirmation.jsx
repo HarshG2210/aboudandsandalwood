@@ -8,6 +8,7 @@ import {
   HStack,
   Icon,
   Image,
+  Spinner,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -21,12 +22,12 @@ import {
   FiShoppingBag,
   FiTruck,
 } from "react-icons/fi";
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
-  fetchCart,
-  selectCartItemsWithTotal,
-  selectCartTotal,
-} from "../../store/slices/cartSlice";
+  fetchOrders,
+  selectCheckoutLoading,
+  selectOrders,
+} from "../../store/slices/checkoutSlice";
 import { useDispatch, useSelector } from "react-redux";
 
 import { useCurrency } from "../../hooks/useCurrency";
@@ -34,22 +35,86 @@ import { useNavigate } from "react-router-dom";
 
 export default function Confirmation() {
   const navigate = useNavigate();
+
   const dispatch = useDispatch();
-
-  const items = useSelector(selectCartItemsWithTotal);
-
-  const cartTotal = useSelector(selectCartTotal);
 
   const { symbol } = useCurrency();
 
-  // fetch cart on mount
+  const loading = useSelector(selectCheckoutLoading);
+
+  const orders = useSelector(selectOrders);
+
+  // ==========================================
+  // FETCH ORDERS
+  // ==========================================
+
   useEffect(() => {
-    dispatch(fetchCart());
+    dispatch(fetchOrders());
   }, [dispatch]);
+
+  // ==========================================
+  // GET LATEST ORDER
+  // ==========================================
+
+  const latestOrder = useMemo(() => {
+    if (!orders || orders.length === 0) return null;
+
+    const sortedOrders = [...orders].sort(
+      (a, b) => Number(b.id) - Number(a.id)
+    );
+
+    return sortedOrders[0];
+  }, [orders]);
+
+  // ==========================================
+  // LOADING
+  // ==========================================
+
+  if (loading) {
+    return (
+      <Box
+        bg="white"
+        borderRadius="3xl"
+        p={10}
+        textAlign="center"
+        border="1px solid"
+        borderColor="gray.200"
+      >
+        <Spinner size="xl" color="brand.400" />
+      </Box>
+    );
+  }
+
+  // ==========================================
+  // EMPTY STATE
+  // ==========================================
+
+  if (!latestOrder) {
+    return (
+      <Box
+        bg="white"
+        borderRadius="3xl"
+        p={10}
+        textAlign="center"
+        border="1px solid"
+        borderColor="gray.200"
+      >
+        <Text fontSize="lg" fontWeight="600">
+          No order found
+        </Text>
+
+        <Button mt={6} variant="gold" onClick={() => navigate("/products")}>
+          Start Shopping
+        </Button>
+      </Box>
+    );
+  }
 
   // ==========================================
   // CALCULATIONS
   // ==========================================
+
+  const cartTotal = Number(latestOrder.total_amount || 0);
 
   const shippingCharge = cartTotal > 5000 ? 0 : 199;
 
@@ -62,12 +127,15 @@ export default function Confirmation() {
   const grandTotal =
     cartTotal + shippingCharge + platformFee + gst + paymentCharge;
 
-  const totalItems = items.reduce(
-    (acc, item) => acc + Number(item.quantity || 0),
-    0
-  );
+  const totalItems =
+    latestOrder.items?.reduce(
+      (acc, item) => acc + Number(item.quantity || 0),
+      0
+    ) || 0;
 
-  const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+  // ==========================================
+  // UI
+  // ==========================================
 
   return (
     <Box>
@@ -86,7 +154,7 @@ export default function Confirmation() {
         borderColor="green.100"
         mb={8}
       >
-        {/* SUCCESS ICON */}
+        {/* ICON */}
         <Box
           w="90px"
           h="90px"
@@ -115,15 +183,15 @@ export default function Confirmation() {
           <Text
             fontSize={{ base: "sm", md: "md" }}
             color="gray.500"
-            maxW="650px"
+            maxW="700px"
             lineHeight="1.9"
           >
-            Thank you for shopping with us. Your payment was processed
-            successfully and your order is now being prepared for shipment.
+            Thank you for your purchase. Your payment was completed successfully
+            and your order is now being processed for shipment.
           </Text>
         </VStack>
 
-        {/* ORDER BADGES */}
+        {/* BADGES */}
         <HStack spacing={4} flexWrap="wrap" justify="center">
           <Badge
             px={4}
@@ -142,7 +210,7 @@ export default function Confirmation() {
             colorScheme="purple"
             fontSize="sm"
           >
-            Order ID: {orderId}
+            Order #{latestOrder.id}
           </Badge>
 
           <Badge
@@ -152,13 +220,17 @@ export default function Confirmation() {
             colorScheme="orange"
             fontSize="sm"
           >
-            Estimated Delivery: 3-5 Days
+            {latestOrder.status}
           </Badge>
         </HStack>
+
+        <Text fontSize="sm" color="gray.400">
+          {new Date(latestOrder.created_at).toLocaleString()}
+        </Text>
       </VStack>
 
       {/* ========================================= */}
-      {/* MAIN CONTENT */}
+      {/* MAIN GRID */}
       {/* ========================================= */}
 
       <Grid
@@ -204,78 +276,104 @@ export default function Confirmation() {
               </Box>
 
               <VStack spacing={0} align="stretch">
-                {items.map((item, index) => (
-                  <Box key={index}>
-                    <HStack spacing={5} align="start" p={6}>
-                      {/* IMAGE */}
-                      <Image
-                        src={
-                          item.product_detail?.images?.[0]?.image ||
-                          "https://via.placeholder.com/120"
-                        }
-                        boxSize="100px"
-                        borderRadius="2xl"
-                        objectFit="cover"
-                      />
+                {latestOrder.items?.map((item, index) => {
+                  const itemTotal =
+                    Number(item.price || 0) * Number(item.quantity || 0);
 
-                      {/* PRODUCT INFO */}
-                      <VStack align="start" spacing={2} flex={1}>
-                        <Text fontWeight="700" fontSize="lg">
-                          {item.product_detail?.name}
-                        </Text>
+                  return (
+                    <Box key={index}>
+                      <HStack spacing={5} align="start" p={6}>
+                        {/* IMAGE */}
+                        <Image
+                          src={
+                            item.product?.images?.find((img) => img.is_primary)
+                              ?.image ||
+                            item.product?.images?.[0]?.image ||
+                            "https://via.placeholder.com/120"
+                          }
+                          boxSize="100px"
+                          borderRadius="2xl"
+                          objectFit="cover"
+                        />
 
-                        <HStack spacing={2} flexWrap="wrap">
-                          <Badge colorScheme="purple">
-                            {item.variant_detail?.label}
-                          </Badge>
-
-                          <Badge colorScheme="green">
-                            {item.product_detail?.grade}
-                          </Badge>
-
-                          <Badge colorScheme="orange">
-                            {item.product_detail?.origin}
-                          </Badge>
-                        </HStack>
-
-                        <Text fontSize="sm" color="gray.500">
-                          {item.product_detail?.short_description}
-                        </Text>
-
-                        <HStack spacing={6} pt={2}>
-                          <Text fontSize="sm">
-                            Quantity:{" "}
-                            <Text as="span" fontWeight="700">
-                              {item.quantity}
-                            </Text>
+                        {/* INFO */}
+                        <VStack align="start" spacing={2} flex={1}>
+                          <Text fontWeight="700" fontSize="lg">
+                            {item.product?.name}
                           </Text>
 
-                          <Text fontSize="sm">
-                            Unit Price:{" "}
-                            <Text as="span" fontWeight="700">
-                              {symbol}
-                              {Number(
-                                item.variant_detail?.price
-                              ).toLocaleString()}
-                            </Text>
+                          <HStack spacing={2} flexWrap="wrap">
+                            <Badge colorScheme="purple">
+                              {item.variant_detail?.label}
+                            </Badge>
+
+                            <Badge colorScheme="green">
+                              {item.product?.grade}
+                            </Badge>
+
+                            <Badge colorScheme="orange">
+                              {item.product?.origin}
+                            </Badge>
+                          </HStack>
+
+                          <Text fontSize="sm" color="gray.500">
+                            {item.product?.short_description}
                           </Text>
-                        </HStack>
-                      </VStack>
 
-                      {/* PRICE */}
-                      <Text fontWeight="700" color="brand.500" fontSize="xl">
-                        {symbol}
-                        {item.itemTotal.toLocaleString()}
-                      </Text>
-                    </HStack>
+                          <HStack spacing={5} flexWrap="wrap">
+                            <Text fontSize="sm">
+                              Quantity:{" "}
+                              <Text as="span" fontWeight="700">
+                                {item.quantity}
+                              </Text>
+                            </Text>
 
-                    {index !== items.length - 1 && <Divider />}
-                  </Box>
-                ))}
+                            <Text fontSize="sm">
+                              Unit Price:{" "}
+                              <Text as="span" fontWeight="700">
+                                {symbol}
+                                {Number(item.price).toLocaleString()}
+                              </Text>
+                            </Text>
+
+                            <Text fontSize="sm">
+                              Size:{" "}
+                              <Text as="span" fontWeight="700">
+                                {item.variant_detail?.size}
+                              </Text>
+                            </Text>
+                          </HStack>
+                        </VStack>
+
+                        {/* TOTAL */}
+                        <VStack align="end" spacing={2}>
+                          <Text
+                            fontWeight="700"
+                            color="brand.500"
+                            fontSize="xl"
+                          >
+                            {symbol}
+                            {itemTotal.toLocaleString()}
+                          </Text>
+
+                          <Text
+                            fontSize="xs"
+                            color="green.500"
+                            fontWeight="700"
+                          >
+                            Confirmed
+                          </Text>
+                        </VStack>
+                      </HStack>
+
+                      {index !== latestOrder.items.length - 1 && <Divider />}
+                    </Box>
+                  );
+                })}
               </VStack>
             </Box>
 
-            {/* ORDER TIMELINE */}
+            {/* TIMELINE */}
             <Box
               bg="white"
               borderRadius="3xl"
@@ -289,7 +387,7 @@ export default function Confirmation() {
                 mb={6}
                 fontFamily="'Cormorant Garamond', serif"
               >
-                Order Status
+                Order Timeline
               </Text>
 
               <VStack spacing={6} align="stretch">
@@ -302,7 +400,7 @@ export default function Confirmation() {
                     <Text fontWeight="700">Order Confirmed</Text>
 
                     <Text fontSize="sm" color="gray.500">
-                      Your order has been successfully placed
+                      Your order has been placed successfully
                     </Text>
                   </Box>
                 </HStack>
@@ -316,7 +414,7 @@ export default function Confirmation() {
                     <Text fontWeight="700">Preparing Shipment</Text>
 
                     <Text fontSize="sm" color="gray.500">
-                      Your products are being packed carefully
+                      Your products are currently being packed
                     </Text>
                   </Box>
                 </HStack>
@@ -327,10 +425,10 @@ export default function Confirmation() {
                   </Box>
 
                   <Box>
-                    <Text fontWeight="700">Ready for Dispatch</Text>
+                    <Text fontWeight="700">Estimated Delivery</Text>
 
                     <Text fontSize="sm" color="gray.500">
-                      Estimated delivery within 3-5 business days
+                      Delivery expected within 3-5 business days
                     </Text>
                   </Box>
                 </HStack>
@@ -375,7 +473,7 @@ export default function Confirmation() {
               <Box p={6}>
                 <VStack spacing={5} align="stretch">
                   <HStack justify="space-between">
-                    <Text color="gray.600">Cart Total</Text>
+                    <Text color="gray.600">Products Total</Text>
 
                     <Text fontWeight="600">
                       {symbol}
@@ -446,7 +544,7 @@ export default function Confirmation() {
               </Box>
             </Box>
 
-            {/* DELIVERY CARD */}
+            {/* DELIVERY */}
             <Box
               bg="green.50"
               borderRadius="3xl"
@@ -465,14 +563,14 @@ export default function Confirmation() {
                   </Text>
 
                   <Text fontSize="sm" color="green.600" mt={2} lineHeight="1.8">
-                    Your order will be shipped within 24 hours and delivered in
-                    approximately 3-5 business days.
+                    Your order will be dispatched shortly and delivered within
+                    3-5 business days.
                   </Text>
                 </Box>
               </HStack>
             </Box>
 
-            {/* ACTION BUTTONS */}
+            {/* ACTIONS */}
             <VStack spacing={4}>
               <Button
                 w="full"
@@ -488,8 +586,8 @@ export default function Confirmation() {
                 w="full"
                 size="lg"
                 variant="outline"
-                leftIcon={<FiHome />}
-                onClick={() => navigate("/profile")}
+                leftIcon={<FiPackage />}
+                onClick={() => navigate("/orders")}
               >
                 View My Orders
               </Button>
