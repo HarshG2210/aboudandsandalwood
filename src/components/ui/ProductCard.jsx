@@ -64,8 +64,6 @@ export default function ProductCard({ product }) {
 
     if (!variant) return;
 
-    console.log("🛒 ADD FROM CARD");
-
     try {
       await dispatch(
         addToCart({

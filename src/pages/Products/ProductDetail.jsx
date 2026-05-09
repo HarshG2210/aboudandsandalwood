@@ -15,6 +15,7 @@ import {
   NumberInputField,
   NumberInputStepper,
   SimpleGrid,
+  Spinner,
   Tab,
   TabList,
   TabPanel,
@@ -38,7 +39,6 @@ import React, { useEffect, useState } from "react";
 import {
   fetchProducts,
   selectAllProducts,
-  selectProductById,
 } from "../../store/slices/productsSlice";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -49,26 +49,46 @@ import { toggleWishlist } from "../../store/slices/wishlistSlice";
 import { useCurrency } from "../../hooks/useCurrency";
 
 const MotionBox = motion(Box);
+
 export default function ProductDetail() {
   const { id } = useParams();
+
   const dispatch = useDispatch();
+
   const toast = useToast();
-  const product = useSelector(selectProductById(id));
 
   const allProducts = useSelector(selectAllProducts);
 
+  // ✅ PRODUCT FROM ROUTE PARAM
+  const product = allProducts.find((p) => String(p.id) === String(id));
+
   const wishlist = useSelector((s) => s.wishlist.items);
-  const { format, currency } = useCurrency();
+
+  const { format } = useCurrency();
+
   const bg = useColorModeValue("ivory", "gray.900");
+
   const [selectedImage, setSelectedImage] = useState(0);
+
   const [selectedVariant, setSelectedVariant] = useState(null);
 
   const [quantity, setQuantity] = useState(1);
+
   const isWishlisted = wishlist.some((i) => i.id === product?.id);
 
+  // ==========================================
+  // FETCH PRODUCTS
+  // ==========================================
+
   useEffect(() => {
-    dispatch(fetchProducts());
-  }, [dispatch]);
+    if (allProducts.length === 0) {
+      dispatch(fetchProducts());
+    }
+  }, [dispatch, allProducts.length]);
+
+  // ==========================================
+  // DEFAULT VARIANT
+  // ==========================================
 
   useEffect(() => {
     if (product?.variants?.length > 0) {
@@ -76,10 +96,37 @@ export default function ProductDetail() {
     }
   }, [product]);
 
-  // ================= RELATED PRODUCTS LOGIC =================
-  const related = allProducts
-    .filter((p) => p.id !== product.id && p.type === product.type)
-    .slice(0, 6);
+  // ==========================================
+  // RELATED PRODUCTS
+  // ==========================================
+
+  const related = product
+    ? allProducts
+        .filter((p) => p.id !== product.id && p.type === product.type)
+        .slice(0, 6)
+    : [];
+
+  // ==========================================
+  // LOADING
+  // ==========================================
+
+  if (allProducts.length === 0) {
+    return (
+      <Box
+        pt={32}
+        minH="60vh"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Spinner size="xl" />
+      </Box>
+    );
+  }
+
+  // ==========================================
+  // NOT FOUND
+  // ==========================================
 
   if (!product) {
     return (
@@ -91,12 +138,17 @@ export default function ProductDetail() {
         >
           Product not found
         </Text>
+
         <Button as={Link} to="/products" variant="gold" mt={6} size="sm">
           Back to Collection
         </Button>
       </Box>
     );
   }
+
+  // ==========================================
+  // ADD TO CART
+  // ==========================================
 
   const handleAddToCart = async () => {
     if (!selectedVariant) return;
@@ -121,10 +173,12 @@ export default function ProductDetail() {
       });
     }
   };
+
   return (
     <Box bg={bg} pt={24} minH="100vh">
       <Box maxW="1400px" mx="auto" px={{ base: 4, md: 10 }} py={8}>
-        {/* Breadcrumb */}
+        {/* BREADCRUMB */}
+
         <Breadcrumb
           mb={8}
           fontFamily="'Jost', sans-serif"
@@ -137,19 +191,25 @@ export default function ProductDetail() {
               Home
             </BreadcrumbLink>
           </BreadcrumbItem>
+
           <BreadcrumbItem>
             <BreadcrumbLink as={Link} to="/products">
               Collection
             </BreadcrumbLink>
           </BreadcrumbItem>
+
           <BreadcrumbItem isCurrentPage>
             <Text color="oud.700" noOfLines={1}>
               {product.name}
             </Text>
           </BreadcrumbItem>
         </Breadcrumb>
+
+        {/* MAIN GRID */}
+
         <Grid templateColumns={{ base: "1fr", lg: "1fr 1fr" }} gap={16} mb={24}>
-          {/* Image Gallery */}
+          {/* IMAGE GALLERY */}
+
           <VStack spacing={4}>
             <MotionBox
               initial={{ opacity: 0, scale: 0.98 }}
@@ -173,6 +233,7 @@ export default function ProductDetail() {
                 />
               </Box>
             </MotionBox>
+
             {product.images.length > 1 && (
               <HStack spacing={3}>
                 {product.images.map((img, i) => (
@@ -202,7 +263,9 @@ export default function ProductDetail() {
               </HStack>
             )}
           </VStack>
-          {/* Product Info */}
+
+          {/* PRODUCT INFO */}
+
           <VStack align="start" spacing={6}>
             <Box>
               <HStack mb={2} flexWrap="wrap" gap={2}>
@@ -220,6 +283,7 @@ export default function ProductDetail() {
                     ? "Agarwood · Oud"
                     : "Sandalwood"}
                 </Badge>
+
                 {product.badge && (
                   <Badge
                     bg="brand.50"
@@ -235,6 +299,7 @@ export default function ProductDetail() {
                   </Badge>
                 )}
               </HStack>
+
               <Text
                 fontFamily="'Cormorant Garamond', serif"
                 fontSize={{ base: "3xl", md: "4xl" }}
@@ -245,6 +310,7 @@ export default function ProductDetail() {
               >
                 {product.name}
               </Text>
+
               <Text
                 fontFamily="'Jost', sans-serif"
                 fontSize="sm"
@@ -255,7 +321,8 @@ export default function ProductDetail() {
               </Text>
             </Box>
 
-            {/* Rating */}
+            {/* RATING */}
+
             <HStack spacing={2}>
               {[...Array(5)].map((_, i) => (
                 <FiStar
@@ -269,6 +336,7 @@ export default function ProductDetail() {
                   color="var(--chakra-colors-brand-400)"
                 />
               ))}
+
               <Text
                 fontFamily="'Jost', sans-serif"
                 fontSize="sm"
@@ -277,7 +345,9 @@ export default function ProductDetail() {
                 {product.rating} · {product.reviews} reviews
               </Text>
             </HStack>
-            {/* Price */}
+
+            {/* PRICE */}
+
             <Text
               fontFamily="'Cormorant Garamond', serif"
               fontSize="4xl"
@@ -285,9 +355,12 @@ export default function ProductDetail() {
               color="brand.500"
             >
               {selectedVariant
-                ? format({ INR: Number(selectedVariant.price) * quantity })
-                : format(product.prices)}
+                ? format({
+                    INR: Number(selectedVariant.price) * quantity,
+                  })
+                : "N/A"}
             </Text>
+
             <Text
               fontFamily="'Jost', sans-serif"
               fontSize="sm"
@@ -296,8 +369,11 @@ export default function ProductDetail() {
             >
               {product.description}
             </Text>
+
             <Divider borderColor="brand.100" />
-            {/* Variant selector */}
+
+            {/* VARIANTS */}
+
             {product.variants && (
               <Box w="full">
                 <Text
@@ -310,6 +386,7 @@ export default function ProductDetail() {
                 >
                   Size / Quantity
                 </Text>
+
                 <HStack spacing={3} flexWrap="wrap">
                   {product.variants.map((v) => (
                     <Button
@@ -326,7 +403,9 @@ export default function ProductDetail() {
                 </HStack>
               </Box>
             )}
-            {/* Quantity + Add to Cart */}
+
+            {/* QUANTITY */}
+
             <HStack spacing={4} w="full" flexWrap="wrap">
               <NumberInput
                 min={1}
@@ -344,11 +423,13 @@ export default function ProductDetail() {
                   border="1px solid"
                   borderColor="brand.200"
                 />
+
                 <NumberInputStepper>
                   <NumberIncrementStepper />
                   <NumberDecrementStepper />
                 </NumberInputStepper>
               </NumberInput>
+
               <Button
                 variant="gold"
                 size="lg"
@@ -357,7 +438,7 @@ export default function ProductDetail() {
                 onClick={handleAddToCart}
                 isDisabled={!selectedVariant || selectedVariant.stock === 0}
               >
-                {product.stock === 0 ? "Out of Stock" : "Add to Bag"}
+                {selectedVariant?.stock === 0 ? "Out of Stock" : "Add to Bag"}
               </Button>
 
               <Button
@@ -366,10 +447,12 @@ export default function ProductDetail() {
                 px={4}
                 onClick={() =>
                   dispatch(
-                    toggleWishlist({ id: product.id, name: product.name })
+                    toggleWishlist({
+                      id: product.id,
+                      name: product.name,
+                    })
                   )
                 }
-                aria-label="Wishlist"
               >
                 <FiHeart
                   fill={isWishlisted ? "currentColor" : "none"}
@@ -377,6 +460,9 @@ export default function ProductDetail() {
                 />
               </Button>
             </HStack>
+
+            {/* STOCK */}
+
             <Text
               fontFamily="'Jost', sans-serif"
               fontSize="xs"
@@ -389,13 +475,26 @@ export default function ProductDetail() {
 
             <Divider borderColor="brand.100" />
 
-            {/* Quick info grid */}
+            {/* QUICK INFO */}
+
             <SimpleGrid columns={2} spacing={4} w="full">
               {[
-                { label: "Origin", value: product.origin },
-                { label: "Grade", value: product.grade },
-                { label: "Scent Profile", value: product.scent },
-                { label: "Purpose", value: product.purpose?.join(", ") },
+                {
+                  label: "Origin",
+                  value: product.origin,
+                },
+                {
+                  label: "Grade",
+                  value: product.grade,
+                },
+                {
+                  label: "Scent Profile",
+                  value: product.scent,
+                },
+                {
+                  label: "Purpose",
+                  value: product.purpose?.join(", "),
+                },
               ].map((item) => (
                 <Box key={item.label}>
                   <Text
@@ -408,6 +507,7 @@ export default function ProductDetail() {
                   >
                     {item.label}
                   </Text>
+
                   <Text
                     fontFamily="'Jost', sans-serif"
                     fontSize="xs"
@@ -419,9 +519,13 @@ export default function ProductDetail() {
                 </Box>
               ))}
             </SimpleGrid>
+
+            {/* FEATURES */}
+
             <HStack spacing={3} flexWrap="wrap">
               <HStack spacing={1}>
                 <FiCheck size={12} color="var(--chakra-colors-green-500)" />
+
                 <Text
                   fontFamily="'Jost', sans-serif"
                   fontSize="xs"
@@ -430,8 +534,10 @@ export default function ProductDetail() {
                   {product.sustainabilityNote}
                 </Text>
               </HStack>
+
               <HStack spacing={1}>
                 <FiGlobe size={12} color="var(--chakra-colors-brand-400)" />
+
                 <Text
                   fontFamily="'Jost', sans-serif"
                   fontSize="xs"
@@ -440,8 +546,10 @@ export default function ProductDetail() {
                   Ships worldwide
                 </Text>
               </HStack>
+
               <HStack spacing={1}>
                 <FiPackage size={12} color="var(--chakra-colors-brand-400)" />
+
                 <Text
                   fontFamily="'Jost', sans-serif"
                   fontSize="xs"
@@ -453,137 +561,9 @@ export default function ProductDetail() {
             </HStack>
           </VStack>
         </Grid>
-        {/* Detail Tabs */}
-        <Box mb={20}>
-          <Tabs colorScheme="orange" variant="line">
-            <TabList borderColor="brand.100">
-              {["Description", "Details & Specs", "Shipping"].map((tab) => (
-                <Tab
-                  key={tab}
-                  fontFamily="'Jost', sans-serif"
-                  fontSize="xs"
-                  letterSpacing="0.15em"
-                  textTransform="uppercase"
-                  _selected={{ color: "brand.500", borderColor: "brand.400" }}
-                >
-                  {tab}
-                </Tab>
-              ))}
-            </TabList>
-            <TabPanels>
-              <TabPanel px={0} py={8}>
-                <Text
-                  fontFamily="'Jost', sans-serif"
-                  fontSize="sm"
-                  color="oud.600"
-                  lineHeight="2"
-                  maxW="720px"
-                >
-                  {product.longDescription}
-                </Text>
-              </TabPanel>
-              <TabPanel px={0} py={8}>
-                <SimpleGrid
-                  columns={{ base: 1, md: 2 }}
-                  spacing={6}
-                  maxW="600px"
-                >
-                  {[
-                    [
-                      "Category",
-                      product.category === "agarwood"
-                        ? "Agarwood (Oud)"
-                        : "Sandalwood",
-                    ],
-                    ["Type", product.type],
-                    ["Grade", product.grade],
-                    ["Origin", product.origin],
-                    ["Scent", product.scent],
-                    product.beads && ["Bead Count", `${product.beads} beads`],
-                    product.beadSize && ["Bead Size", product.beadSize],
-                    ["Purpose", product.purpose?.join(" · ")],
-                    ["Sustainability", product.sustainabilityNote],
-                  ]
-                    .filter(Boolean)
-                    .map(([k, v]) => (
-                      <HStack key={k} align="start" spacing={3}>
-                        <Text
-                          fontFamily="'Jost', sans-serif"
-                          fontSize="xs"
-                          letterSpacing="0.1em"
-                          textTransform="uppercase"
-                          color="brand.400"
-                          minW="110px"
-                        >
-                          {k}
-                        </Text>
-                        <Text
-                          fontFamily="'Jost', sans-serif"
-                          fontSize="sm"
-                          color="oud.700"
-                        >
-                          {v}
-                        </Text>
-                      </HStack>
-                    ))}
-                </SimpleGrid>
-              </TabPanel>
-              <TabPanel px={0} py={8}>
-                <VStack align="start" spacing={4} maxW="560px">
-                  {[
-                    ["India", "3–5 business days", "Free above 999"],
-                    [
-                      "UAE & Middle East",
-                      "5–8 business days",
-                      "Free above AED 150",
-                    ],
-                    ["USA & Canada", "8–14 business days", "Free above $50"],
-                    [
-                      "Japan & China",
-                      "7–12 business days",
-                      "Flat rate shipping",
-                    ],
-                  ].map(([region, time, note]) => (
-                    <HStack
-                      key={region}
-                      justify="space-between"
-                      w="full"
-                      py={3}
-                      borderBottom="1px solid"
-                      borderColor="brand.100"
-                    >
-                      <Box>
-                        <Text
-                          fontFamily="'Jost', sans-serif"
-                          fontSize="sm"
-                          fontWeight="500"
-                          color="oud.800"
-                        >
-                          {region}
-                        </Text>
-                        <Text
-                          fontFamily="'Jost', sans-serif"
-                          fontSize="xs"
-                          color="oud.500"
-                        >
-                          {note}
-                        </Text>
-                      </Box>
-                      <Text
-                        fontFamily="'Jost', sans-serif"
-                        fontSize="xs"
-                        color="brand.500"
-                      >
-                        {time}
-                      </Text>
-                    </HStack>
-                  ))}
-                </VStack>
-              </TabPanel>
-            </TabPanels>
-          </Tabs>
-        </Box>
-        {/* Related Products */}
+
+        {/* RELATED PRODUCTS */}
+
         {related.length > 0 && (
           <Box>
             <Text
@@ -595,6 +575,7 @@ export default function ProductDetail() {
             >
               You May Also Like
             </Text>
+
             <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={6}>
               {related.map((p) => (
                 <ProductCard key={p.id} product={p} />
