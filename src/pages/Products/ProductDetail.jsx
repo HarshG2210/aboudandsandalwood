@@ -1,72 +1,83 @@
 import {
-  Badge,
   Box,
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   Button,
-  Divider,
   Grid,
-  HStack,
-  Image,
-  NumberDecrementStepper,
-  NumberIncrementStepper,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  SimpleGrid,
   Spinner,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
   Text,
-  VStack,
   useColorModeValue,
   useToast,
 } from "@chakra-ui/react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  FiCheck,
-  FiGlobe,
-  FiHeart,
-  FiPackage,
-  FiShoppingBag,
-  FiStar,
-} from "react-icons/fi";
-import { Link, useParams } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+  addToWishlist,
+  fetchWishlist,
+  removeFromWishlist,
+} from "../../store/slices/wishlistSlice";
+import {
+  fetchProductReviews,
+  fetchUserReviews,
+  selectAverageRating,
+  selectProductReviews,
+  selectTotalReviews,
+} from "../../store/slices/reviewSlice";
 import {
   fetchProducts,
   selectAllProducts,
 } from "../../store/slices/productsSlice";
 import { useDispatch, useSelector } from "react-redux";
 
-import ProductCard from "../../components/ui/ProductCard";
+import CustomerReviews from "../../components/ProductDetail/CustomerReviews";
+import MyReviews from "../../components/ProductDetail/MyReviews";
+import ProductGallery from "../../components/ProductDetail/ProductGallery";
+import ProductInfo from "../../components/ProductDetail/ProductInfo";
+import RelatedProducts from "../../components/ProductDetail/RelatedProducts";
 import { addToCart } from "../../store/slices/cartSlice";
 import { motion } from "framer-motion";
-import { toggleWishlist } from "../../store/slices/wishlistSlice";
 import { useCurrency } from "../../hooks/useCurrency";
 
 const MotionBox = motion(Box);
 
-export default function ProductDetail() {
+const ProductDetail = () => {
   const { id } = useParams();
 
   const dispatch = useDispatch();
 
+  const navigate = useNavigate();
+
   const toast = useToast();
-
-  const allProducts = useSelector(selectAllProducts);
-
-  // ✅ PRODUCT FROM ROUTE PARAM
-  const product = allProducts.find((p) => String(p.id) === String(id));
-
-  const wishlist = useSelector((s) => s.wishlist.items);
 
   const { format } = useCurrency();
 
   const bg = useColorModeValue("ivory", "gray.900");
+
+  const allProducts = useSelector(selectAllProducts);
+
+  const wishlist = useSelector((s) => s.wishlist.items || []);
+
+  const reviews = useSelector(selectProductReviews);
+
+  const userReviews = useSelector((s) => s.review.userReviews || []);
+
+  const averageRating = useSelector(selectAverageRating);
+
+  const totalReviews = useSelector(selectTotalReviews);
+
+  const product = useMemo(
+    () => allProducts.find((p) => String(p.id) === String(id)),
+    [allProducts, id]
+  );
+
+  const related = useMemo(() => {
+    if (!product) return [];
+
+    return allProducts
+      .filter((p) => p.id !== product.id && p.type === product.type)
+      .slice(0, 6);
+  }, [allProducts, product]);
 
   const [selectedImage, setSelectedImage] = useState(0);
 
@@ -74,11 +85,9 @@ export default function ProductDetail() {
 
   const [quantity, setQuantity] = useState(1);
 
-  const isWishlisted = wishlist.some((i) => i.id === product?.id);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
-  // ==========================================
   // FETCH PRODUCTS
-  // ==========================================
 
   useEffect(() => {
     if (allProducts.length === 0) {
@@ -86,9 +95,7 @@ export default function ProductDetail() {
     }
   }, [dispatch, allProducts.length]);
 
-  // ==========================================
   // DEFAULT VARIANT
-  // ==========================================
 
   useEffect(() => {
     if (product?.variants?.length > 0) {
@@ -96,61 +103,19 @@ export default function ProductDetail() {
     }
   }, [product]);
 
-  // ==========================================
-  // RELATED PRODUCTS
-  // ==========================================
+  // FETCH REVIEWS
 
-  const related = product
-    ? allProducts
-        .filter((p) => p.id !== product.id && p.type === product.type)
-        .slice(0, 6)
-    : [];
+  useEffect(() => {
+    if (product?.id) {
+      dispatch(fetchProductReviews(product.id));
 
-  // ==========================================
-  // LOADING
-  // ==========================================
+      dispatch(fetchUserReviews());
+    }
+  }, [dispatch, product?.id]);
 
-  if (allProducts.length === 0) {
-    return (
-      <Box
-        pt={32}
-        minH="60vh"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-      >
-        <Spinner size="xl" />
-      </Box>
-    );
-  }
-
-  // ==========================================
-  // NOT FOUND
-  // ==========================================
-
-  if (!product) {
-    return (
-      <Box pt={32} textAlign="center" minH="60vh">
-        <Text
-          fontFamily="'Cormorant Garamond', serif"
-          fontSize="3xl"
-          color="oud.700"
-        >
-          Product not found
-        </Text>
-
-        <Button as={Link} to="/products" variant="gold" mt={6} size="sm">
-          Back to Collection
-        </Button>
-      </Box>
-    );
-  }
-
-  // ==========================================
   // ADD TO CART
-  // ==========================================
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = useCallback(async () => {
     if (!selectedVariant) return;
 
     try {
@@ -172,7 +137,100 @@ export default function ProductDetail() {
         status: "error",
       });
     }
-  };
+  }, [dispatch, product, quantity, selectedVariant, toast]);
+
+  // WISHLIST
+
+  const isWishlisted = useMemo(() => {
+    return Array.isArray(wishlist)
+      ? wishlist.some(
+          (i) =>
+            i.product?.id === product?.id &&
+            i.variant?.id === selectedVariant?.id
+        )
+      : false;
+  }, [wishlist, product, selectedVariant]);
+
+  const handleWishlist = useCallback(
+    async (e) => {
+      e.preventDefault();
+
+      e.stopPropagation();
+
+      if (!selectedVariant || wishlistLoading) return;
+
+      try {
+        setWishlistLoading(true);
+
+        if (isWishlisted) {
+          await dispatch(
+            removeFromWishlist({
+              productId: product.id,
+              variantId: selectedVariant.id,
+            })
+          ).unwrap();
+        } else {
+          await dispatch(
+            addToWishlist({
+              productId: product.id,
+              variantId: selectedVariant.id,
+            })
+          ).unwrap();
+        }
+
+        await dispatch(fetchWishlist());
+
+        toast({
+          title: isWishlisted ? "Removed from wishlist" : "Added to wishlist",
+          status: isWishlisted ? "info" : "success",
+        });
+      } catch (err) {
+        toast({
+          title: "Wishlist Error",
+          status: "warning",
+        });
+      } finally {
+        setWishlistLoading(false);
+      }
+    },
+    [dispatch, isWishlisted, product, selectedVariant, toast, wishlistLoading]
+  );
+
+  // LOADING
+
+  if (allProducts.length === 0) {
+    return (
+      <Box
+        pt={32}
+        minH="60vh"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Spinner size="xl" />
+      </Box>
+    );
+  }
+
+  // NOT FOUND
+
+  if (!product) {
+    return (
+      <Box pt={32} textAlign="center" minH="60vh">
+        <Text
+          fontFamily="'Cormorant Garamond', serif"
+          fontSize="3xl"
+          color="oud.700"
+        >
+          Product not found
+        </Text>
+
+        <Button as={Link} to="/products" variant="gold" mt={6}>
+          Back to Collection
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box bg={bg} pt={24} minH="100vh">
@@ -199,391 +257,54 @@ export default function ProductDetail() {
           </BreadcrumbItem>
 
           <BreadcrumbItem isCurrentPage>
-            <Text color="oud.700" noOfLines={1}>
-              {product.name}
-            </Text>
+            <Text color="oud.700">{product.name}</Text>
           </BreadcrumbItem>
         </Breadcrumb>
 
-        {/* MAIN GRID */}
+        {/* MAIN */}
 
         <Grid templateColumns={{ base: "1fr", lg: "1fr 1fr" }} gap={16} mb={24}>
-          {/* IMAGE GALLERY */}
+          <ProductGallery
+            product={product}
+            selectedImage={selectedImage}
+            setSelectedImage={setSelectedImage}
+            MotionBox={MotionBox}
+          />
 
-          <VStack spacing={4}>
-            <MotionBox
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              w="full"
-            >
-              <Box
-                borderRadius="2xl"
-                overflow="hidden"
-                h={{ base: "320px", md: "520px" }}
-                bg="white"
-              >
-                <Image
-                  src={product.images[selectedImage]}
-                  alt={product.name}
-                  w="full"
-                  h="full"
-                  objectFit="cover"
-                  fallbackSrc="https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=800"
-                />
-              </Box>
-            </MotionBox>
-
-            {product.images.length > 1 && (
-              <HStack spacing={3}>
-                {product.images.map((img, i) => (
-                  <Box
-                    key={i}
-                    w="72px"
-                    h="72px"
-                    borderRadius="lg"
-                    overflow="hidden"
-                    border="2px solid"
-                    borderColor={
-                      selectedImage === i ? "brand.400" : "transparent"
-                    }
-                    cursor="pointer"
-                    onClick={() => setSelectedImage(i)}
-                    transition="border-color 0.2s"
-                  >
-                    <Image
-                      src={img}
-                      alt=""
-                      w="full"
-                      h="full"
-                      objectFit="cover"
-                    />
-                  </Box>
-                ))}
-              </HStack>
-            )}
-          </VStack>
-
-          {/* PRODUCT INFO */}
-
-          <VStack align="start" spacing={6}>
-            <Box>
-              <HStack mb={2} flexWrap="wrap" gap={2}>
-                <Badge
-                  bg={product.category === "agarwood" ? "oud.700" : "brand.400"}
-                  color="white"
-                  fontFamily="'Jost', sans-serif"
-                  fontSize="9px"
-                  letterSpacing="0.15em"
-                  px={3}
-                  py={1}
-                  borderRadius="full"
-                >
-                  {product.category === "agarwood"
-                    ? "Agarwood · Oud"
-                    : "Sandalwood"}
-                </Badge>
-
-                {product.badge && (
-                  <Badge
-                    bg="brand.50"
-                    color="brand.600"
-                    fontFamily="'Jost', sans-serif"
-                    fontSize="9px"
-                    letterSpacing="0.15em"
-                    px={3}
-                    py={1}
-                    borderRadius="full"
-                  >
-                    {product.badge}
-                  </Badge>
-                )}
-              </HStack>
-
-              <Text
-                fontFamily="'Cormorant Garamond', serif"
-                fontSize={{ base: "3xl", md: "4xl" }}
-                fontWeight="300"
-                color="oud.900"
-                lineHeight="1.1"
-                mb={2}
-              >
-                {product.name}
-              </Text>
-
-              <Text
-                fontFamily="'Jost', sans-serif"
-                fontSize="sm"
-                color="oud.500"
-                letterSpacing="0.05em"
-              >
-                {product.subtitle}
-              </Text>
-            </Box>
-
-            {/* RATING */}
-
-            <HStack spacing={2}>
-              {[...Array(5)].map((_, i) => (
-                <FiStar
-                  key={i}
-                  size={14}
-                  fill={
-                    i < Math.round(product.rating)
-                      ? "var(--chakra-colors-brand-400)"
-                      : "none"
-                  }
-                  color="var(--chakra-colors-brand-400)"
-                />
-              ))}
-
-              <Text
-                fontFamily="'Jost', sans-serif"
-                fontSize="sm"
-                color="oud.500"
-              >
-                {product.rating} · {product.reviews} reviews
-              </Text>
-            </HStack>
-
-            {/* PRICE */}
-
-            <Text
-              fontFamily="'Cormorant Garamond', serif"
-              fontSize="4xl"
-              fontWeight="400"
-              color="brand.500"
-            >
-              {selectedVariant
-                ? format({
-                    INR: Number(selectedVariant.price) * quantity,
-                  })
-                : "N/A"}
-            </Text>
-
-            <Text
-              fontFamily="'Jost', sans-serif"
-              fontSize="sm"
-              color="oud.600"
-              lineHeight="1.9"
-            >
-              {product.description}
-            </Text>
-
-            <Divider borderColor="brand.100" />
-
-            {/* VARIANTS */}
-
-            {product.variants && (
-              <Box w="full">
-                <Text
-                  fontFamily="'Jost', sans-serif"
-                  fontSize="xs"
-                  letterSpacing="0.15em"
-                  textTransform="uppercase"
-                  color="oud.600"
-                  mb={3}
-                >
-                  Size / Quantity
-                </Text>
-
-                <HStack spacing={3} flexWrap="wrap">
-                  {product.variants.map((v) => (
-                    <Button
-                      key={v.id}
-                      size="sm"
-                      variant={
-                        selectedVariant?.id === v.id ? "gold" : "outline_gold"
-                      }
-                      onClick={() => setSelectedVariant(v)}
-                    >
-                      {v.label}
-                    </Button>
-                  ))}
-                </HStack>
-              </Box>
-            )}
-
-            {/* QUANTITY */}
-
-            <HStack spacing={4} w="full" flexWrap="wrap">
-              <NumberInput
-                min={1}
-                max={selectedVariant?.stock || 1}
-                value={quantity}
-                onChange={(val) =>
-                  setQuantity(
-                    Math.min(Number(val), selectedVariant?.stock || 1)
-                  )
-                }
-                maxW="120px"
-              >
-                <NumberInputField
-                  fontFamily="'Jost', sans-serif"
-                  border="1px solid"
-                  borderColor="brand.200"
-                />
-
-                <NumberInputStepper>
-                  <NumberIncrementStepper />
-                  <NumberDecrementStepper />
-                </NumberInputStepper>
-              </NumberInput>
-
-              <Button
-                variant="gold"
-                size="lg"
-                flex={1}
-                leftIcon={<FiShoppingBag />}
-                onClick={handleAddToCart}
-                isDisabled={!selectedVariant || selectedVariant.stock === 0}
-              >
-                {selectedVariant?.stock === 0 ? "Out of Stock" : "Add to Bag"}
-              </Button>
-
-              <Button
-                size="lg"
-                variant="outline_gold"
-                px={4}
-                onClick={() =>
-                  dispatch(
-                    toggleWishlist({
-                      id: product.id,
-                      name: product.name,
-                    })
-                  )
-                }
-              >
-                <FiHeart
-                  fill={isWishlisted ? "currentColor" : "none"}
-                  color="var(--chakra-colors-brand-500)"
-                />
-              </Button>
-            </HStack>
-
-            {/* STOCK */}
-
-            <Text
-              fontFamily="'Jost', sans-serif"
-              fontSize="xs"
-              color={selectedVariant?.stock < 10 ? "red.400" : "green.500"}
-            >
-              {selectedVariant?.stock < 10
-                ? `Only ${selectedVariant?.stock} left in stock`
-                : `In stock · ${selectedVariant?.stock} available`}
-            </Text>
-
-            <Divider borderColor="brand.100" />
-
-            {/* QUICK INFO */}
-
-            <SimpleGrid columns={2} spacing={4} w="full">
-              {[
-                {
-                  label: "Origin",
-                  value: product.origin,
-                },
-                {
-                  label: "Grade",
-                  value: product.grade,
-                },
-                {
-                  label: "Scent Profile",
-                  value: product.scent,
-                },
-                {
-                  label: "Purpose",
-                  value: product.purpose?.join(", "),
-                },
-              ].map((item) => (
-                <Box key={item.label}>
-                  <Text
-                    fontFamily="'Jost', sans-serif"
-                    fontSize="9px"
-                    letterSpacing="0.2em"
-                    textTransform="uppercase"
-                    color="brand.400"
-                    mb={1}
-                  >
-                    {item.label}
-                  </Text>
-
-                  <Text
-                    fontFamily="'Jost', sans-serif"
-                    fontSize="xs"
-                    color="oud.700"
-                    lineHeight="1.5"
-                  >
-                    {item.value}
-                  </Text>
-                </Box>
-              ))}
-            </SimpleGrid>
-
-            {/* FEATURES */}
-
-            <HStack spacing={3} flexWrap="wrap">
-              <HStack spacing={1}>
-                <FiCheck size={12} color="var(--chakra-colors-green-500)" />
-
-                <Text
-                  fontFamily="'Jost', sans-serif"
-                  fontSize="xs"
-                  color="oud.500"
-                >
-                  {product.sustainabilityNote}
-                </Text>
-              </HStack>
-
-              <HStack spacing={1}>
-                <FiGlobe size={12} color="var(--chakra-colors-brand-400)" />
-
-                <Text
-                  fontFamily="'Jost', sans-serif"
-                  fontSize="xs"
-                  color="oud.500"
-                >
-                  Ships worldwide
-                </Text>
-              </HStack>
-
-              <HStack spacing={1}>
-                <FiPackage size={12} color="var(--chakra-colors-brand-400)" />
-
-                <Text
-                  fontFamily="'Jost', sans-serif"
-                  fontSize="xs"
-                  color="oud.500"
-                >
-                  Gift packaging available
-                </Text>
-              </HStack>
-            </HStack>
-          </VStack>
+          <ProductInfo
+            product={product}
+            selectedVariant={selectedVariant}
+            setSelectedVariant={setSelectedVariant}
+            quantity={quantity}
+            setQuantity={setQuantity}
+            handleAddToCart={handleAddToCart}
+            handleWishlist={handleWishlist}
+            wishlistLoading={wishlistLoading}
+            isWishlisted={isWishlisted}
+            averageRating={averageRating}
+            totalReviews={totalReviews}
+            format={format}
+          />
         </Grid>
 
-        {/* RELATED PRODUCTS */}
+        <CustomerReviews
+          reviews={reviews}
+          totalReviews={totalReviews}
+          averageRating={averageRating}
+          navigate={navigate}
+          product={product}
+        />
 
-        {related.length > 0 && (
-          <Box>
-            <Text
-              fontFamily="'Cormorant Garamond', serif"
-              fontSize={{ base: "2xl", md: "3xl" }}
-              fontWeight="300"
-              color="oud.800"
-              mb={8}
-            >
-              You May Also Like
-            </Text>
+        <MyReviews
+          userReviews={userReviews}
+          product={product}
+          navigate={navigate}
+        />
 
-            <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={6}>
-              {related.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </SimpleGrid>
-          </Box>
-        )}
+        <RelatedProducts related={related} />
       </Box>
     </Box>
   );
-}
+};
+
+export default React.memo(ProductDetail);

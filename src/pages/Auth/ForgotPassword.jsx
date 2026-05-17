@@ -1,16 +1,17 @@
 import {
   Box,
-  Input,
   Button,
-  VStack,
-  Text,
   FormControl,
-  FormLabel,
   FormErrorMessage,
+  FormLabel,
+  Input,
+  Text,
+  VStack,
 } from "@chakra-ui/react";
-import { useState } from "react";
+
 import { useAuth } from "../../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 export default function ForgotPassword() {
   const auth = useAuth();
@@ -37,7 +38,7 @@ export default function ForgotPassword() {
 
     try {
       await auth.forgotPassword({ email });
-      navigate(`/reset-password?email=${email}`);
+      navigate(`/verify-forgot-otp?email=${email}`);
     } catch (err) {
       console.error("FORGOT ERROR:", err);
     }

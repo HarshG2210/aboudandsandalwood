@@ -1,37 +1,42 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
 import {
-  Box,
-  Flex,
-  HStack,
-  Text,
-  IconButton,
   Badge,
-  Button,
+  Box,
+  Divider,
   Drawer,
   DrawerBody,
-  DrawerOverlay,
-  DrawerContent,
   DrawerCloseButton,
-  VStack,
-  useDisclosure,
+  DrawerContent,
+  DrawerOverlay,
+  Flex,
+  HStack,
+  IconButton,
   Select,
+  Text,
+  VStack,
   useColorMode,
-  Divider,
+  useDisclosure,
 } from "@chakra-ui/react";
 import {
-  FiShoppingBag,
-  FiSearch,
-  FiUser,
-  FiMenu,
-  FiSun,
-  FiMoon,
   FiHeart,
+  FiMenu,
+  FiMoon,
+  FiSearch,
+  FiShoppingBag,
+  FiSun,
+  FiUser,
 } from "react-icons/fi";
-import { toggleCart, selectCartCount } from "../../store/slices/cartSlice";
-import { setRegion } from "../../store/slices/userSlice";
+import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import {
+  fetchWishlist,
+  selectWishlist,
+} from "../../store/slices/wishlistSlice";
+import { selectCartCount, toggleCart } from "../../store/slices/cartSlice";
+import { useDispatch, useSelector } from "react-redux";
+
 import { CURRENCIES } from "../../hooks/useCurrency";
+import { setRegion } from "../../store/slices/userSlice";
+
 const navLinks = [
   { label: "Collection", to: "/products" },
   { label: "Spiritual", to: "/spiritual" },
@@ -47,11 +52,21 @@ export default function Navbar() {
   const { colorMode, toggleColorMode } = useColorMode();
   const cartCount = useSelector(selectCartCount);
   const [scrolled, setScrolled] = useState(false);
+
+  const wishlist = useSelector(selectWishlist);
+
+  const wishlistCount = Array.isArray(wishlist) ? wishlist.length : 0;
+
+  useEffect(() => {
+    dispatch(fetchWishlist());
+  }, [dispatch]);
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
   const handleCurrency = (e) => {
     const found = CURRENCIES.find((c) => c.code === e.target.value);
     if (found)
@@ -167,15 +182,36 @@ export default function Navbar() {
             onClick={() => navigate("/products")}
             aria-label="Search"
           />
-          <IconButton
-            icon={<FiHeart />}
-            variant="ghost"
-            size="sm"
-            color="oud.600"
-            _hover={{ color: "brand.500", bg: "brand.50" }}
-            onClick={() => navigate("/profile")}
-            aria-label="Wishlist"
-          />
+          <Box position="relative">
+            <IconButton
+              icon={<FiHeart />}
+              variant="ghost"
+              size="sm"
+              color="oud.600"
+              _hover={{ color: "brand.500", bg: "brand.50" }}
+              onClick={() => navigate("/wishlist")}
+              aria-label="Wishlist"
+            />
+
+            {wishlistCount > 0 && (
+              <Badge
+                position="absolute"
+                top="-1"
+                right="-1"
+                bg="red.400"
+                color="white"
+                borderRadius="full"
+                fontSize="9px"
+                minW="16px"
+                h="16px"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+              >
+                {wishlistCount}
+              </Badge>
+            )}
+          </Box>
           <IconButton
             icon={<FiUser />}
             variant="ghost"

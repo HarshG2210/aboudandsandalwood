@@ -161,11 +161,11 @@ export const forgotPassword = createAsyncThunk(
   }
 );
 
-export const resetPassword = createAsyncThunk(
-  "user/resetPassword",
+export const verifyForgotOtp = createAsyncThunk(
+  "user/verifyForgotOtp",
   async (payload, { rejectWithValue }) => {
     try {
-      return await authService.resetPassword(payload);
+      return await authService.verifyForgotOtp(payload);
     } catch (err) {
       return rejectWithValue(normalizeError(err));
     }
@@ -177,6 +177,17 @@ export const resendForgotOtp = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       return await authService.resendForgotOtp(payload);
+    } catch (err) {
+      return rejectWithValue(normalizeError(err));
+    }
+  }
+);
+
+export const resetPassword = createAsyncThunk(
+  "user/resetPassword",
+  async (payload, { rejectWithValue }) => {
+    try {
+      return await authService.resetPassword(payload);
     } catch (err) {
       return rejectWithValue(normalizeError(err));
     }
@@ -327,15 +338,15 @@ const userSlice = createSlice({
         s.error = a.payload;
       })
 
-      // reset password
-      .addCase(resetPassword.pending, (s) => {
-        s.loadingReset = true;
+      // verify forgot password otp
+      .addCase(verifyForgotOtp.pending, (s) => {
+        s.loadingVerify = true;
       })
-      .addCase(resetPassword.fulfilled, (s) => {
-        s.loadingReset = false;
+      .addCase(verifyForgotOtp.fulfilled, (s) => {
+        s.loadingVerify = false;
       })
-      .addCase(resetPassword.rejected, (s, a) => {
-        s.loadingReset = false;
+      .addCase(verifyForgotOtp.rejected, (s, a) => {
+        s.loadingVerify = false;
         s.error = a.payload;
       })
 
@@ -348,6 +359,18 @@ const userSlice = createSlice({
       })
       .addCase(resendForgotOtp.rejected, (s, a) => {
         s.loadingResendForgotOtp = false;
+        s.error = a.payload;
+      })
+
+      // reset password
+      .addCase(resetPassword.pending, (s) => {
+        s.loadingReset = true;
+      })
+      .addCase(resetPassword.fulfilled, (s) => {
+        s.loadingReset = false;
+      })
+      .addCase(resetPassword.rejected, (s, a) => {
+        s.loadingReset = false;
         s.error = a.payload;
       })
 

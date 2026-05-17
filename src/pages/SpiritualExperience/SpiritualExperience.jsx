@@ -1,22 +1,24 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
 import {
   Box,
-  Text,
-  VStack,
-  HStack,
-  SimpleGrid,
   Button,
-  Grid,
   Divider,
   Flex,
+  Grid,
+  HStack,
+  SimpleGrid,
+  Text,
+  VStack,
   useColorModeValue,
 } from "@chakra-ui/react";
-import { motion } from "framer-motion";
+
 import { FiArrowRight } from "react-icons/fi";
-import ProductCard from "../components/ui/ProductCard";
-import { selectByType, selectAllProducts } from "../store/slices/productsSlice";
+import { Link } from "react-router-dom";
+import ProductCard from "../../components/ui/ProductCard";
+import React from "react";
+import { motion } from "framer-motion";
+import { selectAllProducts } from "../../store/slices/productsSlice";
+import { useSelector } from "react-redux";
+
 const MotionBox = motion(Box);
 const traditions = [
   {

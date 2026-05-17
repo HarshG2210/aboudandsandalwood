@@ -1,4 +1,5 @@
 import "react-toastify/dist/ReactToastify.css";
+import "./fonts.css";
 
 import { ChakraProvider, ColorModeScript } from "@chakra-ui/react";
 

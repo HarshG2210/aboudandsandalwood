@@ -3,7 +3,7 @@ import { Box, useColorModeValue } from "@chakra-ui/react";
 import Collection from "./Collection";
 import CtaStrip from "./CtaStrip";
 import FeaturedProducts from "./FeaturedProducts";
-import HeroSection from "./HeroSection";
+import HeroSection from "./HeroSection/HeroSection";
 import MiddleEastSpotlight from "./MiddleEastSpotlight";
 import TIickerMarquee from "./TIickerMarquee";
 import Testimonials from "./Testimonials";
